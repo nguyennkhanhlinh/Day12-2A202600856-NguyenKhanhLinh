@@ -1,4 +1,10 @@
 services:
+  # Redis managed (Key Value) — state store cho stateless agent
+  - type: keyvalue
+    name: agent-redis
+    plan: free
+    ipAllowList: []
+
   - type: web
     name: ai-agent-production
     runtime: docker
@@ -17,7 +23,13 @@ services:
         generateValue: true
       - key: JWT_SECRET
         generateValue: true
-      - key: DAILY_BUDGET_USD
-        value: "5.0"
+      - key: MONTHLY_BUDGET_USD
+        value: "10.0"
       - key: RATE_LIMIT_PER_MINUTE
-        value: "20"
+        value: "10"
+      # REDIS_URL tự lấy từ service redis ở trên
+      - key: REDIS_URL
+        fromService:
+          name: agent-redis
+          type: keyvalue
+          property: connectionString

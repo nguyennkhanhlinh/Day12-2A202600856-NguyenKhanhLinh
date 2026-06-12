@@ -27,18 +27,20 @@ class Settings:
         default_factory=lambda: os.getenv("ALLOWED_ORIGINS", "*").split(",")
     )
 
-    # Rate limiting
+    # Rate limiting — đề Part 6: 10 req/min per user
     rate_limit_per_minute: int = field(
-        default_factory=lambda: int(os.getenv("RATE_LIMIT_PER_MINUTE", "20"))
+        default_factory=lambda: int(os.getenv("RATE_LIMIT_PER_MINUTE", "10"))
     )
 
-    # Budget
-    daily_budget_usd: float = field(
-        default_factory=lambda: float(os.getenv("DAILY_BUDGET_USD", "5.0"))
+    # Budget — đề Part 6: $10/month per user
+    monthly_budget_usd: float = field(
+        default_factory=lambda: float(os.getenv("MONTHLY_BUDGET_USD", "10.0"))
     )
 
-    # Storage
-    redis_url: str = field(default_factory=lambda: os.getenv("REDIS_URL", ""))
+    # Storage — Redis cho stateless design (history, rate-limit, cost)
+    redis_url: str = field(
+        default_factory=lambda: os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    )
 
     def validate(self):
         logger = logging.getLogger(__name__)

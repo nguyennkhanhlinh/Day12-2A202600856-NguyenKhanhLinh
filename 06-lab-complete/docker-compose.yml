@@ -1,16 +1,31 @@
-version: "3.9"
-
+# Full stack: nginx (load balancer) → agent (scale được) → redis (state store)
+# Chạy:   docker compose up --scale agent=3
+# Test:   curl http://localhost/health
 services:
+  # Reverse proxy + load balancer — cửa ngõ duy nhất ra ngoài (cổng 80)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - agent
+    restart: unless-stopped
+
+  # Agent — stateless, scale nhiều instance qua: docker compose up --scale agent=3
+  # KHÔNG map host port để tránh xung đột khi scale; nginx lo việc public.
   agent:
     build: .
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
       - ENVIRONMENT=staging
       - APP_NAME=Production AI Agent
       - REDIS_URL=redis://redis:6379/0
-    env_file:
-      - .env.local
+      - AGENT_API_KEY=${AGENT_API_KEY:-dev-key-change-me}
+      - RATE_LIMIT_PER_MINUTE=10
+      - MONTHLY_BUDGET_USD=10.0
     depends_on:
       redis:
         condition: service_healthy
@@ -23,11 +38,19 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  # Redis — state store dùng chung cho mọi agent instance (history, rate-limit, cost)
   redis:
     image: redis:7-alpine
-    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
       retries: 3
+    restart: unless-stopped
+
+# Named volume — Redis data bền vững qua restart
+volumes:
+  redis-data:
